@@ -5,7 +5,7 @@ COPY src/JobListingsAPI/JobListingsAPI.csproj ./src/JobListingsAPI/
 COPY tests/JobListingsAPI.Tests/JobListingsAPI.Tests.csproj ./tests/JobListingsAPI.Tests/
 RUN dotnet restore
 COPY . .
-RUN dotnet publish src/JobListingsAPI/JobListingsAPI.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish src/JobListingsAPI/JobListingsAPI.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app

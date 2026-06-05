@@ -1,0 +1,70 @@
+version: "3.9"
+
+networks:
+  polyglot-net:
+    driver: bridge
+
+volumes:
+  redis-data:
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis-data:/data
+    networks:
+      - polyglot-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ${DOCKER_USERNAME}/devoopsp-backend:latest
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - REDIS_CONNECTION=redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - polyglot-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/status || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    image: ${DOCKER_USERNAME}/devoopsp-worker:latest
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POLL_INTERVAL=5
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - polyglot-net
+
+  frontend:
+    image: ${DOCKER_USERNAME}/devoopsp-frontend:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://${VM_PUBLIC_IP}:5000
+      - API_URL=http://backend:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - polyglot-net

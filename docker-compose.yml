@@ -1,0 +1,82 @@
+version: "3.9"
+
+networks:
+  polyglot-net:
+    driver: bridge
+
+volumes:
+  redis-data:
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    container_name: devoopsp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - polyglot-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend-dotnet
+      dockerfile: Dockerfile
+    container_name: devoopsp-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+      - REDIS_CONNECTION=redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - polyglot-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/status || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ./worker-python
+      dockerfile: Dockerfile
+    container_name: devoopsp-worker
+    restart: unless-stopped
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POLL_INTERVAL=5
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - polyglot-net
+
+  frontend:
+    build:
+      context: ./frontend-nextjs
+      dockerfile: Dockerfile
+    container_name: devoopsp-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - API_URL=http://backend:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - polyglot-net

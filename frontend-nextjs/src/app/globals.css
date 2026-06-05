@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* DEMO CHANGE: edit this color for the live demo */
+  --banner-bg: #22c55e;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: #0a0f0d; color: #e8f5e2; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+
+.banner-bg { background-color: var(--banner-bg); }

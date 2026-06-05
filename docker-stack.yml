@@ -1,0 +1,75 @@
+version: "3.9"
+
+networks:
+  polyglot-net:
+    driver: overlay
+    attachable: true
+
+volumes:
+  redis-data:
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - polyglot-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ${DOCKER_USERNAME}/devoopsp-backend:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - REDIS_CONNECTION=redis:6379
+    networks:
+      - polyglot-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  worker:
+    image: ${DOCKER_USERNAME}/devoopsp-worker:latest
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POLL_INTERVAL=5
+    networks:
+      - polyglot-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  frontend:
+    image: ${DOCKER_USERNAME}/devoopsp-frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - API_URL=http://backend:5000
+    networks:
+      - polyglot-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
